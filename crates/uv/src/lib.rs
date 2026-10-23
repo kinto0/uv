@@ -2946,6 +2946,7 @@ async fn run_project(
                 args.python,
                 args.install_mirrors,
                 args.settings,
+                args.type_checker,
                 args.ty_version,
                 args.show_version,
                 args.show_command,

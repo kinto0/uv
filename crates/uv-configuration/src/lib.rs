@@ -38,6 +38,7 @@ pub use target_triple::*;
 pub use tool_run::*;
 pub use trusted_host::*;
 pub use trusted_publishing::*;
+pub use type_checker::*;
 pub use vcs::*;
 pub use version_bump::*;
 
@@ -81,5 +82,6 @@ mod target_triple;
 mod tool_run;
 mod trusted_host;
 mod trusted_publishing;
+mod type_checker;
 mod vcs;
 mod version_bump;

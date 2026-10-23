@@ -19,8 +19,8 @@ use uv_configuration::{
     ExcludeNewerPackageEntry, ExportFormat, ForkStrategy, IndexStrategy, KeyringProviderType,
     ListFormat, PackageNameSpecifier, PipCompileFormat, PipInstallFormat, PrereleaseMode,
     PrereleasePackageEntry, ProjectBuildBackend, PythonListFormat, ResolutionMode, SyncFormat,
-    TargetTriple, TreeFormat, TrustedHost, TrustedPublishing, VersionBump, VersionBumpSpec,
-    VersionControlSystem, VersionFormat,
+    TargetTriple, TreeFormat, TrustedHost, TrustedPublishing, TypeChecker, VersionBump,
+    VersionBumpSpec, VersionControlSystem, VersionFormat,
 };
 use uv_distribution_types::{
     ConfigSettingEntry, ConfigSettingPackageEntry, ExcludeNewerOverride, Index, IndexName,
@@ -4962,6 +4962,13 @@ pub struct CheckArgs {
         value_hint = ValueHint::Other,
     )]
     pub python: Option<Maybe<String>>,
+
+    /// The type checker to run.
+    ///
+    /// Pyrefly must be a project dependency or a dependency in the project's `dev` group, so that
+    /// `uv.lock` pins its version.
+    #[arg(long, value_enum, default_value_t, conflicts_with = "ty_version")]
+    pub type_checker: TypeChecker,
 
     /// The version of ty to use for type checking.
     ///

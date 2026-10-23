@@ -24,7 +24,8 @@ use uv_configuration::{
     KeyringProviderType, Modifications, NoBinary, NoBuild, NoSources, Override, PackageOverride,
     PipCompileFormat, Prerelease, ProjectBuildBackend, ProxyUrl, PythonUpgrade,
     PythonUpgradeSource, Reinstall, RequiredVersion, RequirementsInput, ResolutionMode,
-    TargetTriple, ToolRunCommand, TrustedHost, TrustedPublishing, Upgrade, VersionControlSystem,
+    TargetTriple, ToolRunCommand, TrustedHost, TrustedPublishing, TypeChecker, Upgrade,
+    VersionControlSystem,
 };
 use uv_distribution_types::{
     ConfigSettings, DependencyMetadata, ExcludeNewerOverride, ExtraBuildVariables, Index,
@@ -3043,6 +3044,7 @@ pub struct CheckSettings {
     pub install_mirrors: PythonInstallMirrors,
     pub refresh: Refresh,
     pub settings: ResolverInstallerSettings,
+    pub type_checker: TypeChecker,
     pub ty_version: Option<String>,
     pub show_version: bool,
     pub show_command: bool,
@@ -3085,6 +3087,7 @@ impl CheckSettings {
             no_install_project,
             isolated,
             python,
+            type_checker,
             ty_version,
             show_version,
             show_command,
@@ -3164,6 +3167,7 @@ impl CheckSettings {
                 .combine(filesystem_install_mirrors),
             refresh: Refresh::try_from(refresh)?,
             settings,
+            type_checker,
             ty_version,
             show_version,
             show_command,
