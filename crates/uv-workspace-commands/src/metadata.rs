@@ -22,8 +22,12 @@ use uv_lock_operations::{
 use uv_preview::{Preview, PreviewFeature};
 use uv_python_discovery::ConfigDiscovery;
 use uv_python_discovery::ProjectPythonRequest;
+use uv_python_discovery::PythonDownloadReporter;
+use uv_python_discovery::PythonInstallation;
 use uv_python_discovery::ScriptInterpreter;
-use uv_python_types::{PythonArchitecture, PythonDownloads, PythonPreference, PythonRequest};
+use uv_python_types::{
+    EnvironmentPreference, PythonArchitecture, PythonDownloads, PythonPreference, PythonRequest,
+};
 use uv_resolve_operations::loggers::DefaultResolveLogger;
 use uv_scripts::Pep723Script;
 use uv_settings::{
@@ -286,6 +290,38 @@ pub async fn metadata(
             }
         }
     };
+
+    if let Some(python) = python.as_deref() {
+        let request = PythonRequest::parse(python);
+        export = match environment.as_ref() {
+            Some(environment)
+                if environment.interpreter().matches_request(
+                    &request.with_default_arch(python_arch.map(PythonArchitecture::into_inner)),
+                    cache,
+                ) =>
+            {
+                export.with_python_request(python, environment.interpreter())
+            }
+            // Without synchronization, the environment may not satisfy the request.
+            Some(_) | None => {
+                let reporter = PythonDownloadReporter::single(printer);
+                let installation = PythonInstallation::find_or_download(
+                    Some(&request),
+                    EnvironmentPreference::Any,
+                    python_preference,
+                    python_arch,
+                    python_downloads,
+                    &client_builder,
+                    cache,
+                    Some(&reporter),
+                    install_mirrors.mirrors(),
+                    install_mirrors.python_downloads_json_url.as_deref(),
+                )
+                .await?;
+                export.with_python_request(python, installation.interpreter())
+            }
+        };
+    }
 
     if let Some(environment) = environment {
         let _lock = environment

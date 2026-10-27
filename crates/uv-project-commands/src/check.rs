@@ -716,8 +716,8 @@ pub async fn check(
 
     // Forward the user's explicit Python request so the type checker can apply its own version
     // selection rules.
-    let python_version = if let Some(python) = python {
-        let request = PythonRequest::parse(&python);
+    let python_version = if let Some(python) = python.as_deref() {
+        let request = PythonRequest::parse(python);
         if let Some(venv) = venv.as_ref()
             && venv.interpreter().matches_request(
                 &request.with_default_arch(python_arch.map(PythonArchitecture::into_inner)),
@@ -810,6 +810,7 @@ pub async fn check(
                 &members,
                 &files,
                 venv.as_ref().map(PythonEnvironment::root),
+                python.as_deref(),
                 lock_check,
                 frozen,
                 show_version,

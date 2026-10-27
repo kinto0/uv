@@ -70,6 +70,13 @@ pub struct Metadata {
     /// Information about the existing or synchronized environment, when available.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     environment: Option<MetadataEnvironment>,
+    /// The interpreter that an explicit Python request (`--python` or `UV_PYTHON`) selects.
+    ///
+    /// This can differ from the environment's interpreter when the environment is not
+    /// synchronized, e.g., to check compatibility with an older Python version against an
+    /// existing environment.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    python_request: Option<MetadataPythonRequest>,
     /// Information about the script root, when metadata was requested for a script.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     script: Option<MetadataScript>,
@@ -109,6 +116,15 @@ enum SchemaVersion {
 struct SchemaReport {
     /// The version of the schema.
     version: SchemaVersion,
+}
+
+/// An explicit Python request and the interpreter it selects.
+#[derive(Debug, serde::Serialize)]
+struct MetadataPythonRequest {
+    /// The request as the user wrote it, e.g., `3.12`.
+    request: String,
+    /// The interpreter that satisfies the request.
+    python: PythonReport,
 }
 
 /// Information about the existing or synchronized environment for the workspace.
@@ -1473,6 +1489,7 @@ impl Metadata {
             },
             conflicts,
             environment: None,
+            python_request: None,
             script,
             workspace: workspace_metadata,
             modules: BTreeMap::new(),
@@ -1503,6 +1520,16 @@ impl Metadata {
     /// ID uses the distribution's metadata path as its source.
     pub fn unmanaged_package_node_id(dist: &InstalledDist) -> String {
         MetadataNodeId::from_unmanaged_distribution(dist).to_flat()
+    }
+
+    /// Report the interpreter that an explicit Python request selects.
+    #[must_use]
+    pub fn with_python_request(mut self, request: &str, interpreter: &Interpreter) -> Self {
+        self.python_request = Some(MetadataPythonRequest {
+            request: request.to_owned(),
+            python: PythonReport::from(interpreter),
+        });
+        self
     }
 
     #[must_use]

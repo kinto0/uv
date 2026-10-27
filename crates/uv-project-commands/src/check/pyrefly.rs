@@ -23,6 +23,7 @@ pub(super) async fn run(
     members: &[PackageName],
     files: &[PathBuf],
     venv_path: Option<&Path>,
+    python_request: Option<&str>,
     lock_check: LockCheck,
     frozen: Option<FrozenSource>,
     show_version: bool,
@@ -54,6 +55,11 @@ pub(super) async fn run(
     // environment, and `UV` selects this uv executable.
     if let Some(venv_path) = venv_path {
         command.env(EnvVars::VIRTUAL_ENV, venv_path);
+    }
+    // The build system reports the interpreter that this request selects, and checks the
+    // workspace against its version while it still resolves imports from `VIRTUAL_ENV`.
+    if let Some(python_request) = python_request {
+        command.env(EnvVars::UV_PYTHON, python_request);
     }
     if let Ok(uv) = std::env::current_exe() {
         command.env(EnvVars::UV, uv);
