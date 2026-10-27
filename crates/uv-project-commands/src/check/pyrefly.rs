@@ -50,6 +50,8 @@ pub(super) async fn run(
     let mut command = Command::new(pyrefly_path);
     command.current_dir(target_dir);
     command.arg("check");
+    // Select Pyrefly's `uv` build system, so the project needs no Pyrefly configuration for it.
+    command.arg("--build-system").arg("uv");
     command.arg("--color").arg(color.as_str());
     // The build system runs `uv workspace metadata --active`, so `VIRTUAL_ENV` selects the
     // environment, and `UV` selects this uv executable.

@@ -4966,8 +4966,8 @@ pub struct CheckArgs {
     /// The type checker to run.
     ///
     /// Pyrefly must be a project dependency or a dependency in the project's `dev` group, so that
-    /// `uv.lock` pins its version. Pyrefly reads environments and Python versions from
-    /// `uv workspace metadata` when its configuration sets `build-system = { type = "uv" }`.
+    /// `uv.lock` pins its version. uv selects Pyrefly's `uv` build system, which reads workspace
+    /// members, environments, and Python versions from `uv workspace metadata`.
     #[arg(long, value_enum, default_value_t, conflicts_with = "ty_version")]
     pub type_checker: TypeChecker,
 
