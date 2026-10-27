@@ -12,14 +12,15 @@ use uv_static::EnvVars;
 
 /// Run a type check powered by Pyrefly.
 ///
-/// Pyrefly learns about environments and Python versions from its build system, which runs
-/// `uv workspace pyrefly-source-db`. uv only selects the files to check, and forwards the lockfile
-/// settings to that child command.
+/// Pyrefly's `uv` build system reads environments and Python versions from
+/// `uv workspace metadata`. uv selects the files to check, and points that child command at the
+/// selected environment and lockfile settings, in the same way as for ty.
 pub(super) async fn run(
     pyrefly_path: &Path,
     target_dir: &Path,
     check_targets: &[PathBuf],
     excluded_targets: &[PathBuf],
+    venv_path: Option<&Path>,
     lock_check: LockCheck,
     frozen: Option<FrozenSource>,
     show_version: bool,
@@ -47,6 +48,14 @@ pub(super) async fn run(
     command.current_dir(target_dir);
     command.arg("check");
     command.arg("--color").arg(color.as_str());
+    // The build system runs `uv workspace metadata --active`, so `VIRTUAL_ENV` selects the
+    // environment, and `UV` selects this uv executable.
+    if let Some(venv_path) = venv_path {
+        command.env(EnvVars::VIRTUAL_ENV, venv_path);
+    }
+    if let Ok(uv) = std::env::current_exe() {
+        command.env(EnvVars::UV, uv);
+    }
     if frozen.is_some() {
         command.env(EnvVars::UV_FROZEN, "1");
     } else {

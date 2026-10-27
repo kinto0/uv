@@ -2163,10 +2163,6 @@ pub async fn run(cli: Cli, global_initialization: GlobalInitialization) -> Resul
                 )
                 .await
             }
-            WorkspaceCommand::PyreflySourceDb(args) => {
-                show_settings!(args);
-                commands::pyrefly_source_db(args.arguments, printer).await
-            }
         },
         Commands::BuildBackend { command } => spawn_blocking(move || match command {
             BuildBackendCommand::BuildSdist { sdist_directory } => {

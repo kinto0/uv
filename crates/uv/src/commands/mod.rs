@@ -56,7 +56,6 @@ pub(crate) use version::self_version;
 pub(crate) use workspace::dir::dir;
 pub(crate) use workspace::list::list;
 pub(crate) use workspace::metadata::metadata;
-pub(crate) use workspace::pyrefly_source_db::pyrefly_source_db;
 
 mod auth;
 pub(crate) mod build_backend;

@@ -790,6 +790,7 @@ pub async fn check(
                 &target_dir,
                 &check_targets,
                 &excluded_targets,
+                venv.as_ref().map(PythonEnvironment::root),
                 lock_check,
                 frozen,
                 show_version,

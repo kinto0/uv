@@ -4966,9 +4966,8 @@ pub struct CheckArgs {
     /// The type checker to run.
     ///
     /// Pyrefly must be a project dependency or a dependency in the project's `dev` group, so that
-    /// `uv.lock` pins its version. Pyrefly reads environments and Python versions from its build
-    /// system, so its configuration must set
-    /// `build-system = { type = "custom", command = ["uv", "workspace", "pyrefly-source-db"] }`.
+    /// `uv.lock` pins its version. Pyrefly reads environments and Python versions from
+    /// `uv workspace metadata` when its configuration sets `build-system = { type = "uv" }`.
     #[arg(long, value_enum, default_value_t, conflicts_with = "ty_version")]
     pub type_checker: TypeChecker,
 
@@ -7594,18 +7593,6 @@ pub enum WorkspaceCommand {
     ///
     /// Displays newline separated names of workspace members.
     List(WorkspaceListArgs),
-    /// Describe the workspace as a Pyrefly source database.
-    ///
-    /// Pyrefly runs this command through its `custom` build system.
-    #[command(hide = true)]
-    PyreflySourceDb(PyreflySourceDbArgs),
-}
-
-#[derive(Args, Debug)]
-pub struct PyreflySourceDbArgs {
-    /// The `@<argfile>` arguments that Pyrefly passes.
-    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
-    pub arguments: Vec<String>,
 }
 #[derive(Args)]
 pub struct MetadataArgs {

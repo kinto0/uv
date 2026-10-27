@@ -8275,10 +8275,7 @@ version = "0.0.98"
 dependencies = [
  "anstream",
  "anyhow",
- "fs-err",
  "owo-colors",
- "serde",
- "serde_json",
  "tracing",
  "uv-cache",
  "uv-client",
@@ -8303,7 +8300,6 @@ dependencies = [
  "uv-settings",
  "uv-warnings",
  "uv-workspace",
- "walkdir",
 ]
 
 [[package]]
