@@ -6,18 +6,22 @@ use tokio::process::Command;
 
 use uv_command_support::{ExitStatus, Printer, child::run_to_completion};
 use uv_configuration::ColorChoice;
-use uv_pep440::Version;
-use uv_python_interpreter::PythonEnvironment;
+use uv_settings::{FrozenSource, LockCheck};
 use uv_shell::shlex_posix;
+use uv_static::EnvVars;
 
 /// Run a type check powered by Pyrefly.
+///
+/// Pyrefly learns about environments and Python versions from its build system, which runs
+/// `uv workspace pyrefly-source-db`. uv only selects the files to check, and forwards the lockfile
+/// settings to that child command.
 pub(super) async fn run(
     pyrefly_path: &Path,
     target_dir: &Path,
     check_targets: &[PathBuf],
     excluded_targets: &[PathBuf],
-    venv: Option<&PythonEnvironment>,
-    python_version: Option<&Version>,
+    lock_check: LockCheck,
+    frozen: Option<FrozenSource>,
     show_version: bool,
     show_command: bool,
     color: ColorChoice,
@@ -43,19 +47,15 @@ pub(super) async fn run(
     command.current_dir(target_dir);
     command.arg("check");
     command.arg("--color").arg(color.as_str());
-    if let Some(python_version) = python_version {
-        command
-            .arg("--python-version")
-            .arg(python_version.to_string());
+    if frozen.is_some() {
+        command.env(EnvVars::UV_FROZEN, "1");
+    } else {
+        command.env_remove(EnvVars::UV_FROZEN);
     }
-    if let Some(venv) = venv {
-        // Pyrefly queries this interpreter for its site-packages and, unless overridden above, its
-        // Python version.
-        command
-            .arg("--python-interpreter-path")
-            .arg(venv.python_executable());
-        command.env("VIRTUAL_ENV", venv.root());
-    }
+    match lock_check {
+        LockCheck::Enabled(_) => command.env(EnvVars::UV_LOCKED, "1"),
+        LockCheck::Disabled => command.env_remove(EnvVars::UV_LOCKED),
+    };
     for excluded_target in excluded_targets {
         command.arg("--project-excludes");
         command.arg(
