@@ -785,11 +785,30 @@ pub async fn check(
                     "`--type-checker pyrefly` requires `pyrefly` in `uv.lock`; run `uv add --dev pyrefly` to add it"
                 );
             };
+            // Pyrefly's build system knows which files each member owns, so uv selects members
+            // rather than paths, and needs no excludes for unselected nested members.
+            let members = match &project {
+                Some(project) if script.is_none() => {
+                    if defacto_all_packages {
+                        project.workspace().packages().keys().cloned().collect()
+                    } else if !package.is_empty() {
+                        package.clone()
+                    } else {
+                        project.project_name().into_iter().cloned().collect()
+                    }
+                }
+                Some(_) | None => Vec::new(),
+            };
+            let files = if members.is_empty() {
+                check_targets.clone()
+            } else {
+                Vec::new()
+            };
             pyrefly::run(
                 &pyrefly_path,
                 &target_dir,
-                &check_targets,
-                &excluded_targets,
+                &members,
+                &files,
                 venv.as_ref().map(PythonEnvironment::root),
                 lock_check,
                 frozen,

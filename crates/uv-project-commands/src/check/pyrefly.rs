@@ -6,20 +6,22 @@ use tokio::process::Command;
 
 use uv_command_support::{ExitStatus, Printer, child::run_to_completion};
 use uv_configuration::ColorChoice;
+use uv_normalize::PackageName;
 use uv_settings::{FrozenSource, LockCheck};
 use uv_shell::shlex_posix;
 use uv_static::EnvVars;
 
 /// Run a type check powered by Pyrefly.
 ///
-/// Pyrefly's `uv` build system reads environments and Python versions from
-/// `uv workspace metadata`. uv selects the files to check, and points that child command at the
-/// selected environment and lockfile settings, in the same way as for ty.
+/// Pyrefly's `uv` build system reads members, environments, and Python versions from
+/// `uv workspace metadata`. uv selects workspace members as build system targets, or files when
+/// there are no members to select, and points the build system at the selected environment and
+/// lockfile settings, in the same way as for ty.
 pub(super) async fn run(
     pyrefly_path: &Path,
     target_dir: &Path,
-    check_targets: &[PathBuf],
-    excluded_targets: &[PathBuf],
+    members: &[PackageName],
+    files: &[PathBuf],
     venv_path: Option<&Path>,
     lock_check: LockCheck,
     frozen: Option<FrozenSource>,
@@ -65,26 +67,13 @@ pub(super) async fn run(
         LockCheck::Enabled(_) => command.env(EnvVars::UV_LOCKED, "1"),
         LockCheck::Disabled => command.env_remove(EnvVars::UV_LOCKED),
     };
-    for excluded_target in excluded_targets {
-        command.arg("--project-excludes");
-        command.arg(
-            excluded_target
-                .strip_prefix(target_dir)
-                .unwrap_or(excluded_target),
-        );
+    for member in members {
+        command.arg("--target").arg(format!("//member:{member}"));
     }
-    if !check_targets.is_empty() {
+    if !files.is_empty() {
         command.arg("--");
-        for check_target in check_targets {
-            let relative = check_target
-                .strip_prefix(target_dir)
-                .unwrap_or(check_target);
-            // Pyrefly rejects an empty path, which is what the working directory strips to.
-            command.arg(if relative.as_os_str().is_empty() {
-                Path::new(".")
-            } else {
-                relative
-            });
+        for file in files {
+            command.arg(file.strip_prefix(target_dir).unwrap_or(file));
         }
     }
 
