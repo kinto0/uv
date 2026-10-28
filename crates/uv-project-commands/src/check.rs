@@ -788,6 +788,8 @@ pub async fn check(
             pyrefly::run(
                 &pyrefly_path,
                 &target_dir,
+                lock_check,
+                frozen,
                 &check_targets,
                 &excluded_targets,
                 venv.as_ref(),

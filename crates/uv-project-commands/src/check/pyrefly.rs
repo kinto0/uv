@@ -8,12 +8,19 @@ use uv_command_support::{ExitStatus, Printer, child::run_to_completion};
 use uv_configuration::ColorChoice;
 use uv_pep440::Version;
 use uv_python_interpreter::PythonEnvironment;
+use uv_settings::{FrozenSource, LockCheck};
 use uv_shell::shlex_posix;
+use uv_static::EnvVars;
 
 /// Run a type check powered by Pyrefly.
+///
+/// As for ty, uv selects the files to check by path. Pyrefly checks them in the environment that
+/// `VIRTUAL_ENV` selects, which is the script's environment for `uv check --script`.
 pub(super) async fn run(
     pyrefly_path: &Path,
     target_dir: &Path,
+    lock_check: LockCheck,
+    frozen: Option<FrozenSource>,
     check_targets: &[PathBuf],
     excluded_targets: &[PathBuf],
     venv: Option<&PythonEnvironment>,
@@ -49,13 +56,26 @@ pub(super) async fn run(
             .arg(python_version.to_string());
     }
     if let Some(venv) = venv {
-        // Pyrefly queries this interpreter for its site-packages and, unless overridden above, its
-        // Python version.
-        command
-            .arg("--python-interpreter-path")
-            .arg(venv.python_executable());
-        command.env("VIRTUAL_ENV", venv.root());
+        command.env(EnvVars::VIRTUAL_ENV, venv.root());
     }
+    // When its configuration sets `use-uv`, Pyrefly runs `uv workspace metadata` with this uv
+    // executable and lockfile policy.
+    if let Ok(uv) = std::env::current_exe() {
+        command.env(EnvVars::UV, uv);
+    }
+    if frozen.is_some() {
+        command.env(EnvVars::UV_FROZEN, "1");
+    } else {
+        command.env_remove(EnvVars::UV_FROZEN);
+    }
+    match lock_check {
+        LockCheck::Enabled(_) => command.env(EnvVars::UV_LOCKED, "1"),
+        LockCheck::Disabled => command.env_remove(EnvVars::UV_LOCKED),
+    };
+
+    // PEP 723 scripts have independent environments and must be checked explicitly with
+    // `uv check --script`. This still allows explicitly selected script paths to be checked.
+    command.arg("--exclude-scripts");
     for excluded_target in excluded_targets {
         command.arg("--project-excludes");
         command.arg(
