@@ -1,3 +1,4 @@
+use std::ffi::{OsStr, OsString};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
@@ -61,10 +62,21 @@ pub(super) async fn run(
     if let Some(venv) = venv {
         command.env(EnvVars::VIRTUAL_ENV, venv.root());
     }
-    // When its configuration sets `use-uv`, Pyrefly runs `uv workspace metadata` with this uv
-    // executable and lockfile policy.
+    // Pyrefly finds the environment of each PEP 723 script that it checks with this uv executable
+    // and lockfile policy.
     if let Ok(uv) = std::env::current_exe() {
-        command.env(EnvVars::UV, uv);
+        for argument in [
+            uv.as_os_str(),
+            OsStr::new("workspace"),
+            OsStr::new("metadata"),
+            OsStr::new("--preview-features"),
+            OsStr::new("workspace-metadata"),
+            OsStr::new("--script"),
+        ] {
+            let mut flag = OsString::from("--script-command=");
+            flag.push(argument);
+            command.arg(flag);
+        }
     }
     if frozen.is_some() {
         command.env(EnvVars::UV_FROZEN, "1");
