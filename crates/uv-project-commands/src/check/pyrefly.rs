@@ -92,7 +92,7 @@ pub(super) async fn run(
     // `uv check --script`. This still allows explicitly selected script paths to be checked.
     command.arg("--exclude-scripts");
     for excluded_target in excluded_targets {
-        command.arg("--project-excludes");
+        command.arg("--extend-project-excludes");
         command.arg(
             excluded_target
                 .strip_prefix(target_dir)
