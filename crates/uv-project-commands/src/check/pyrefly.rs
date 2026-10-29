@@ -14,13 +14,16 @@ use uv_static::EnvVars;
 
 /// Run a type check powered by Pyrefly.
 ///
-/// As for ty, uv selects the files to check by path. Pyrefly checks them in the environment that
-/// `VIRTUAL_ENV` selects, which is the script's environment for `uv check --script`.
+/// uv passes the root of each selected workspace member as `--project-dir`, so Pyrefly checks the
+/// files of each member with the includes and excludes of the config that governs it. A script is
+/// passed by path. Pyrefly checks in the environment that `VIRTUAL_ENV` selects, which is the
+/// script's environment for `uv check --script`.
 pub(super) async fn run(
     pyrefly_path: &Path,
     target_dir: &Path,
     lock_check: LockCheck,
     frozen: Option<FrozenSource>,
+    is_script: bool,
     check_targets: &[PathBuf],
     excluded_targets: &[PathBuf],
     venv: Option<&PythonEnvironment>,
@@ -84,18 +87,24 @@ pub(super) async fn run(
                 .unwrap_or(excluded_target),
         );
     }
-    if !check_targets.is_empty() {
+    let relative_targets = check_targets.iter().map(|check_target| {
+        let relative = check_target
+            .strip_prefix(target_dir)
+            .unwrap_or(check_target);
+        // Pyrefly rejects an empty path, which is what the working directory strips to.
+        if relative.as_os_str().is_empty() {
+            Path::new(".")
+        } else {
+            relative
+        }
+    });
+    if is_script {
         command.arg("--");
-        for check_target in check_targets {
-            let relative = check_target
-                .strip_prefix(target_dir)
-                .unwrap_or(check_target);
-            // Pyrefly rejects an empty path, which is what the working directory strips to.
-            command.arg(if relative.as_os_str().is_empty() {
-                Path::new(".")
-            } else {
-                relative
-            });
+        command.args(relative_targets);
+    } else {
+        for relative_target in relative_targets {
+            command.arg("--project-dir");
+            command.arg(relative_target);
         }
     }
 

@@ -790,6 +790,7 @@ pub async fn check(
                 &target_dir,
                 lock_check,
                 frozen,
+                script.is_some(),
                 &check_targets,
                 &excluded_targets,
                 venv.as_ref(),
