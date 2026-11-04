@@ -15,16 +15,15 @@ use uv_static::EnvVars;
 
 /// Run a type check powered by Pyrefly.
 ///
-/// uv passes the root of each selected workspace member as `--project-dir`, so Pyrefly checks the
-/// files of each member with the includes and excludes of the config that governs it. A script is
-/// passed by path. Pyrefly checks in the environment that `VIRTUAL_ENV` selects, which is the
+/// uv passes the root directory of each selected workspace member, and Pyrefly checks a directory
+/// as a project: it checks the files of each member with the includes and excludes of the config
+/// that governs it. A script is passed as a file, which Pyrefly checks even if a config excludes it. Pyrefly checks in the environment that `VIRTUAL_ENV` selects, which is the
 /// script's environment for `uv check --script`.
 pub(super) async fn run(
     pyrefly_path: &Path,
     target_dir: &Path,
     lock_check: LockCheck,
     frozen: Option<FrozenSource>,
-    is_script: bool,
     check_targets: &[PathBuf],
     excluded_targets: &[PathBuf],
     venv: Option<&PythonEnvironment>,
@@ -110,15 +109,8 @@ pub(super) async fn run(
             relative
         }
     });
-    if is_script {
-        command.arg("--");
-        command.args(relative_targets);
-    } else {
-        for relative_target in relative_targets {
-            command.arg("--project-dir");
-            command.arg(relative_target);
-        }
-    }
+    command.arg("--");
+    command.args(relative_targets);
 
     if show_command {
         let mut stderr = printer.stderr_important();
