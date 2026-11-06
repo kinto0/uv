@@ -15,10 +15,12 @@ use uv_static::EnvVars;
 
 /// Run a type check powered by Pyrefly.
 ///
-/// uv passes the root directory of each selected workspace member, and Pyrefly checks a directory
-/// as a project: it checks the files of each member with the includes and excludes of the config
-/// that governs it. A script is passed as a file, which Pyrefly checks even if a config excludes it. Pyrefly checks in the environment that `VIRTUAL_ENV` selects, which is the
-/// script's environment for `uv check --script`.
+/// uv runs Pyrefly once for each check target. Pyrefly checks a directory as a project, with the
+/// includes and excludes of the config that governs it, and one run checks one project, so each
+/// selected workspace member gets its own run, which excludes the selected members nested in it.
+/// A script is passed as a file, which Pyrefly checks even if a config excludes it. Pyrefly
+/// checks in the environment that `VIRTUAL_ENV` selects, which is the script's environment for
+/// `uv check --script`.
 pub(super) async fn run(
     pyrefly_path: &Path,
     target_dir: &Path,
@@ -49,6 +51,47 @@ pub(super) async fn run(
         )?;
     }
 
+    let mut status = ExitStatus::Success;
+    for check_target in check_targets {
+        let nested_targets = check_targets
+            .iter()
+            .filter(|other| *other != check_target && other.starts_with(check_target));
+        let target_status = run_one(
+            pyrefly_path,
+            target_dir,
+            lock_check,
+            frozen.is_some(),
+            check_target,
+            excluded_targets.iter().chain(nested_targets),
+            venv,
+            python_version,
+            show_command,
+            color,
+            printer,
+        )
+        .await?;
+        status = match status {
+            ExitStatus::Success => target_status,
+            ExitStatus::Failure | ExitStatus::Error | ExitStatus::External(_) => status,
+        };
+    }
+    Ok(status)
+}
+
+/// Run `pyrefly check` on one check target, excluding `excluded_targets`.
+async fn run_one(
+    pyrefly_path: &Path,
+    target_dir: &Path,
+    lock_check: LockCheck,
+    frozen: bool,
+    check_target: &Path,
+    excluded_targets: impl Iterator<Item = &PathBuf>,
+    venv: Option<&PythonEnvironment>,
+    python_version: Option<&Version>,
+    show_command: bool,
+    color: ColorChoice,
+    printer: Printer,
+) -> Result<ExitStatus> {
     let mut command = Command::new(pyrefly_path);
     command.current_dir(target_dir);
     command.arg("check");
@@ -77,7 +120,7 @@ pub(super) async fn run(
             command.arg(flag);
         }
     }
-    if frozen.is_some() {
+    if frozen {
         command.env(EnvVars::UV_FROZEN, "1");
     } else {
         command.env_remove(EnvVars::UV_FROZEN);
@@ -98,19 +141,16 @@ pub(super) async fn run(
                 .unwrap_or(excluded_target),
         );
     }
-    let relative_targets = check_targets.iter().map(|check_target| {
-        let relative = check_target
-            .strip_prefix(target_dir)
-            .unwrap_or(check_target);
-        // Pyrefly rejects an empty path, which is what the working directory strips to.
-        if relative.as_os_str().is_empty() {
-            Path::new(".")
-        } else {
-            relative
-        }
-    });
+    let relative_target = check_target
+        .strip_prefix(target_dir)
+        .unwrap_or(check_target);
     command.arg("--");
-    command.args(relative_targets);
+    // Pyrefly rejects an empty path, which is what the working directory strips to.
+    if relative_target.as_os_str().is_empty() {
+        command.arg(".");
+    } else {
+        command.arg(relative_target);
+    }
 
     if show_command {
         let mut stderr = printer.stderr_important();
